@@ -1,8 +1,10 @@
 import { register } from "@/api/auth";
 import { useMutation } from "@tanstack/react-query";
+import * as ImagePicker from "expo-image-picker";
 import { Link, router } from "expo-router";
 import React, { useState } from "react";
 import {
+  Image,
   StyleSheet,
   Text,
   TextInput,
@@ -11,11 +13,14 @@ import {
 } from "react-native";
 
 const Register = () => {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [formData, setFormData] = useState({
+    username: "",
+    password: "",
+    image: "",
+  });
 
   const { mutate } = useMutation({
-    mutationFn: () => register({ username, password }),
+    mutationFn: () => register(formData),
     onSuccess: () => {
       router.replace("/(protected)/(tabs)/Home");
     },
@@ -25,21 +30,56 @@ const Register = () => {
     mutate();
   };
 
+  const pickImage = async () => {
+    // Request permission
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (permissionResult.granted === false) {
+      alert("Permission to access camera roll is required!");
+      return;
+    }
+
+    // Launch image picker
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setFormData({ ...formData, image: result.assets[0].uri });
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Register</Text>
+      <TouchableOpacity onPress={pickImage}>
+        <Image
+          source={
+            formData.image
+              ? { uri: formData.image }
+              : require("@/assets/images/noAvatar.png")
+          }
+          style={styles.image}
+        />
+      </TouchableOpacity>
       <TextInput
         placeholder="Username"
         style={styles.input}
-        value={username}
-        onChangeText={setUsername}
+        value={formData.username}
+        onChangeText={(text) => setFormData({ ...formData, username: text })}
       />
       <TextInput
         placeholder="Password"
         style={styles.input}
-        value={password}
-        onChangeText={setPassword}
+        value={formData.password}
+        onChangeText={(text) => setFormData({ ...formData, password: text })}
+        secureTextEntry
       />
+
       <TouchableOpacity style={styles.button} onPress={handleRegister}>
         <Text style={styles.buttonText}>Register</Text>
       </TouchableOpacity>
@@ -68,6 +108,15 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     textAlign: "center",
     textTransform: "uppercase",
+  },
+  image: {
+    width: 150,
+    height: 150,
+    alignSelf: "center",
+    marginBottom: 20,
+    borderRadius: 100,
+    borderWidth: 1,
+    borderColor: "gray",
   },
   input: {
     borderWidth: 1,
